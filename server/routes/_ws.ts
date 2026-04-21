@@ -1,7 +1,4 @@
-import type { Peer } from 'crossws'
-
-// Stockage des clients connectés
-const peers = new Set<Peer>()
+import { peers, broadcast } from '../utils/ws'
 
 export default defineWebSocketHandler({
   open(peer) {
@@ -24,14 +21,3 @@ export default defineWebSocketHandler({
   },
 });
 
-// Exportation pour permettre le broadcast depuis d'autres parties du backend
-export const broadcast = (message: any) => {
-  const data = typeof message === 'string' ? message : JSON.stringify(message)
-  peers.forEach(peer => {
-    try {
-      peer.send(data)
-    } catch (e) {
-      peers.delete(peer)
-    }
-  })
-}
