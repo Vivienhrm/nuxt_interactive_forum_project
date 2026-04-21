@@ -55,6 +55,16 @@
             <v-divider v-if="index < data.topics.length - 1"></v-divider>
           </template>
         </v-list>
+
+        <!-- Pagination -->
+        <div class="text-center mt-6">
+          <v-pagination
+            v-model="page"
+            :length="Math.ceil(data.total / data.limit)"
+            :total-visible="7"
+            @update:model-value="refresh"
+          ></v-pagination>
+        </div>
       </v-col>
     </v-row>
 
@@ -91,8 +101,9 @@
 
 <script setup>
 const route = useRoute()
+const page = ref(1)
 const { isAuthenticated } = useAuth()
-const { data, pending, refresh } = await useFetch(`/api/forums/${route.params.id}`)
+const { data, pending, refresh } = await useFetch(() => `/api/forums/${route.params.id}?page=${page.value}`)
 
 const dialog = ref(false)
 const creating = ref(false)

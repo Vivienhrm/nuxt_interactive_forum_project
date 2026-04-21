@@ -42,13 +42,23 @@
               <v-col cols="12" sm="9" class="pl-sm-4">
                 <div class="text-caption text-grey mb-2 d-flex justify-space-between">
                   <span>Posté le {{ new Date(msg.created_at).toLocaleString() }}</span>
-                  <span>#{{ index + 1 }}</span>
+                  <span>#{{ (data.page - 1) * data.limit + index + 1 }}</span>
                 </div>
                 <div class="text-body-1" style="white-space: pre-wrap;">{{ msg.content }}</div>
               </v-col>
             </v-row>
           </v-card-text>
         </v-card>
+
+        <!-- Pagination -->
+        <div class="text-center mt-6">
+          <v-pagination
+            v-model="page"
+            :length="Math.ceil(data.total / data.limit)"
+            :total-visible="7"
+            @update:model-value="refresh"
+          ></v-pagination>
+        </div>
       </v-col>
     </v-row>
 
@@ -93,8 +103,9 @@
 
 <script setup>
 const route = useRoute()
+const page = ref(1)
 const { isAuthenticated } = useAuth()
-const { data, pending, refresh } = await useFetch(`/api/topics/${route.params.id}`)
+const { data, pending, refresh } = await useFetch(() => `/api/topics/${route.params.id}?page=${page.value}`)
 
 const replyContent = ref('')
 const sending = ref(false)
