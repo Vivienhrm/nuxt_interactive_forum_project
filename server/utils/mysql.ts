@@ -7,11 +7,12 @@ export const defineWrappedResponseHandler = <T extends EventHandlerRequest, D>(
 ): EventHandler<T, D> =>
   defineEventHandler<T>(async event => {
     try {
+      const config = useRuntimeConfig()
       const connection = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'root',
-        database: 'forum',
+        host: config.dbHost,
+        user: config.dbUser,
+        password: config.dbPassword,
+        database: config.dbName,
         Promise: bluebird,
       })
       event.context.mysql = connection

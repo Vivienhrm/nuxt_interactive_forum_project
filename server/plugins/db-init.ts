@@ -7,10 +7,11 @@ export default defineNitroPlugin(async (nitroApp) => {
   const setupDb = async () => {
     let connection;
     try {
+      const config = useRuntimeConfig()
       connection = await mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'root',
+        host: config.dbHost,
+        user: config.dbUser,
+        password: config.dbPassword,
         Promise: bluebird,
       })
 
@@ -72,14 +73,24 @@ export default defineNitroPlugin(async (nitroApp) => {
       `)
 
       // Création du compte ADMIN par défaut
-      const [rows]: any = await connection.execute('SELECT * FROM users WHERE username = "admin"')
-      if (rows.length === 0) {
+      const [userRows]: any = await connection.execute('SELECT * FROM users WHERE username = "admin"')
+      if (userRows.length === 0) {
         console.log('[db-init] Création du compte admin par défaut...')
         // Note: Dans une vraie app on hasherait le mot de passe, on verra ça à l'étape Auth
         await connection.execute(
           'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
           ['admin', 'admin', 'admin']
         )
+      }
+
+      // Création de quelques FORUMS par défaut
+      const [forumRows]: any = await connection.execute('SELECT * FROM forums')
+      if (forumRows.length === 0) {
+        console.log('[db-init] Création des forums par défaut...')
+        const defaultForums = ['Général', 'Développement Web', 'Jeux Vidéo', 'Hardware']
+        for (const forum of defaultForums) {
+          await connection.execute('INSERT INTO forums (name) VALUES (?)', [forum])
+        }
       }
 
       console.log('[db-init] Initialisation terminée avec succès !')
