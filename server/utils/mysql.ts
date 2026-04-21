@@ -20,8 +20,16 @@ export const defineWrappedResponseHandler = <T extends EventHandlerRequest, D>(
       await event.context.mysql.end()
       return response
     } catch (err: any) {
-      // Error handling
+      // Si c'est déjà une erreur H3 (ex: via createError), on la laisse passer
+      if (err.statusCode) {
+        throw err
+      }
+      
       console.error('[mysql error]', err)
-      return { err: err.message || err }
+      throw createError({
+        statusCode: 500,
+        statusMessage: 'Internal Server Error (Database)',
+        data: err.message
+      })
     }
   })
