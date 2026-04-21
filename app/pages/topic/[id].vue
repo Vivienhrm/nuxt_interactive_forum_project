@@ -6,7 +6,24 @@
         <v-btn :to="`/forum/${data.topic.forum_id}`" variant="text" prepend-icon="mdi-arrow-left" class="mb-4">
           Retour au forum {{ data.topic.forum_name }}
         </v-btn>
-        <h1 class="text-h4 mb-2">{{ data.topic.title }}</h1>
+        
+        <div class="d-flex align-center gap-4 flex-wrap mb-2">
+          <h1 class="text-h4">{{ data.topic.title }}</h1>
+          <v-chip v-if="data.topic.locked" color="error" prepend-icon="mdi-lock" size="small">Verrouillé</v-chip>
+          <v-spacer></v-spacer>
+          <!-- Admin actions -->
+          <v-btn
+            v-if="user?.role === 'admin'"
+            :color="data.topic.locked ? 'success' : 'warning'"
+            prepend-icon="mdi-lock"
+            size="small"
+            variant="tonal"
+            @click="toggleLock"
+          >
+            {{ data.topic.locked ? 'Déverrouiller' : 'Verrouiller' }}
+          </v-btn>
+        </div>
+
         <div class="text-subtitle-1 text-grey mb-6">
           Sujet ouvert par <strong>{{ data.topic.author_name }}</strong> le {{ new Date(data.topic.created_at).toLocaleDateString() }}
         </div>
@@ -34,15 +51,26 @@
                     <v-icon v-else icon="mdi-account"></v-icon>
                   </v-avatar>
                   <div class="font-weight-bold">{{ msg.author_name }}</div>
-                  <div class="text-caption text-grey">Membre</div>
+                  <v-chip v-if="msg.username === 'admin' || msg.author_id === 1" size="x-small" color="red" class="mt-1">Staff</v-chip>
                 </div>
               </v-col>
 
               <!-- Contenu Message -->
               <v-col cols="12" sm="9" class="pl-sm-4">
-                <div class="text-caption text-grey mb-2 d-flex justify-space-between">
+                <div class="text-caption text-grey mb-2 d-flex justify-space-between align-center">
                   <span>Posté le {{ new Date(msg.created_at).toLocaleString() }}</span>
-                  <span>#{{ (data.page - 1) * data.limit + index + 1 }}</span>
+                  <div>
+                    <v-btn
+                      v-if="user?.role === 'admin' || (user && user.id === msg.author_id)"
+                      icon="mdi-delete"
+                      variant="text"
+                      size="x-small"
+                      color="error"
+                      class="mr-2"
+                      @click="deleteMessage(msg.id)"
+                    ></v-btn>
+                    <span>#{{ (data.page - 1) * data.limit + index + 1 }}</span>
+                  </div>
                 </div>
                 <div class="text-body-1" style="white-space: pre-wrap;">{{ msg.content }}</div>
               </v-col>
@@ -63,7 +91,8 @@
     </v-row>
 
     <!-- Formulaire de réponse -->
-    <v-row v-if="isAuthenticated">
+    <v-row v-if="isAuthenticated && !data?.topic.locked">
+
       <v-col cols="12">
         <v-card class="pa-4" border>
           <v-card-title>Votre réponse</v-card-title>
@@ -104,7 +133,7 @@
 <script setup>
 const route = useRoute()
 const page = ref(1)
-const { isAuthenticated } = useAuth()
+const { isAuthenticated, user } = useAuth()
 const { data, pending, refresh } = await useFetch(() => `/api/topics/${route.params.id}?page=${page.value}`)
 
 const replyContent = ref('')
@@ -129,6 +158,28 @@ async function sendReply() {
   }
 }
 
+async function toggleLock() {
+  try {
+    await $fetch(`/api/topics/${route.params.id}`, {
+      method: 'PATCH',
+      body: { locked: !data.value.topic.locked }
+    })
+    await refresh()
+  } catch (err) {
+    alert('Erreur: ' + err.data?.statusMessage)
+  }
+}
+
+async function deleteMessage(id) {
+  if (!confirm('Voulez-vous vraiment supprimer ce message ?')) return
+  try {
+    await $fetch(`/api/messages/${id}`, { method: 'DELETE' })
+    await refresh()
+  } catch (err) {
+    alert('Erreur: ' + err.data?.statusMessage)
+  }
+}
+
 // Gestion WebSocket
 if (import.meta.client) {
   const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
@@ -136,9 +187,13 @@ if (import.meta.client) {
 
   ws.onmessage = (event) => {
     const message = JSON.parse(event.data)
-    if (message.type === 'new_message' && message.topicId === parseInt(route.params.id)) {
-      wsNotification.value = true
-      refresh() // On rafraîchit pour voir le nouveau message
+    
+    // Si c'est relatif à ce sujet, on rafraîchit
+    if (message.topicId === parseInt(route.params.id)) {
+      if (message.type === 'new_message') {
+        wsNotification.value = true
+      }
+      refresh()
     }
   }
 
@@ -147,3 +202,4 @@ if (import.meta.client) {
   })
 }
 </script>
+

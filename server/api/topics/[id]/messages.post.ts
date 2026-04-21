@@ -20,7 +20,21 @@ export default defineWrappedResponseHandler(async (event) => {
 
   const { content } = await readBody(event)
 
+  // 1. Vérifier si le sujet est verrouillé
+  const [topics]: any = await event.context.mysql.execute(
+    'SELECT locked FROM topics WHERE id = ?',
+    [topicId]
+  )
+
+  if (topics.length > 0 && topics[0].locked) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Ce sujet est verrouillé. Vous ne pouvez plus y répondre.'
+    })
+  }
+
   if (!content) {
+
     throw createError({
       statusCode: 400,
       statusMessage: 'Le contenu du message est vide'
