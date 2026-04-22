@@ -82,7 +82,7 @@
                   <v-list-item v-for="forum in forums" :key="forum.id">
                     <v-list-item-title>{{ forum.name }}</v-list-item-title>
                     <template v-slot:append>
-                      <v-btn icon="mdi-pencil" variant="text" size="small"></v-btn>
+                      <v-btn icon="mdi-pencil" variant="text" size="small" @click="openEditDialog(forum)"></v-btn>
                     </template>
                   </v-list-item>
                 </v-list>
@@ -92,6 +92,25 @@
         </v-window>
       </v-col>
     </v-row>
+
+    <!-- Dialogue Modification Forum -->
+    <v-dialog v-model="editDialog" max-width="400px">
+      <v-card>
+        <v-card-title>Modifier le forum</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="forumToEdit.name"
+            label="Nouveau nom"
+            hide-details
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer></v-spacer>
+          <v-btn variant="text" @click="editDialog = false">Annuler</v-btn>
+          <v-btn color="primary" @click="saveForum" :loading="savingForum">Enregistrer</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
@@ -99,7 +118,7 @@
 const tab = ref('users')
 const { user } = useAuth()
 
-// Fetch des données (Nuxt gèrera les erreurs 403 si l'utilisateur n'est pas admin)
+// Fetch des données
 const { data: users, refresh: refreshUsers } = await useFetch('/api/admin/users')
 const { data: forums, refresh: refreshForums } = await useFetch('/api/forums')
 
@@ -122,6 +141,10 @@ async function changeRole(targetUser) {
 // Gestion Forums
 const newForumName = ref('')
 const creatingForum = ref(false)
+const editDialog = ref(false)
+const savingForum = ref(false)
+const forumToEdit = reactive({ id: null, name: '' })
+
 async function createForum() {
   if (!newForumName.value.trim()) return
   creatingForum.value = true
@@ -138,4 +161,28 @@ async function createForum() {
     creatingForum.value = false
   }
 }
+
+function openEditDialog(forum) {
+  forumToEdit.id = forum.id
+  forumToEdit.name = forum.name
+  editDialog.value = true
+}
+
+async function saveForum() {
+  if (!forumToEdit.name.trim()) return
+  savingForum.value = true
+  try {
+    await $fetch(`/api/admin/forums/${forumToEdit.id}`, {
+      method: 'PATCH',
+      body: { name: forumToEdit.name }
+    })
+    editDialog.value = false
+    await refreshForums()
+  } catch (err) {
+    alert('Erreur: ' + err.data?.statusMessage)
+  } finally {
+    savingForum.value = false
+  }
+}
 </script>
+
