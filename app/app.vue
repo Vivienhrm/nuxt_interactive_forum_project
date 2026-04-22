@@ -12,9 +12,10 @@
       <v-btn to="/socket" icon="mdi-lan-connect" title="Test WebSockets" class="mr-2"></v-btn>
 
       <template v-if="user">
-        <v-chip class="mr-2" prepend-icon="mdi-account-circle" color="white" variant="outlined">
-          {{ user.username }} ({{ user.role }})
-        </v-chip>
+        <v-btn v-if="user.role === 'admin'" to="/admin" variant="text" prepend-icon="mdi-shield-crown" class="mr-2">
+          Admin
+        </v-btn>
+        <span class="mr-4 text-subtitle-2">Bienvenue, {{ user.username }}</span>
         <v-btn @click="logout" color="white" variant="text">Déconnexion</v-btn>
       </template>
       <template v-else>
